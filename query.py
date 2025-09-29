@@ -1,4 +1,5 @@
 # Initialize Chroma client
+from email import message
 import chromadb
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 import os
@@ -21,7 +22,7 @@ def query_collection(query):
       n_results=3,  # Return top 3 most relevant chunks
       include=['documents', 'metadatas', 'distances']
   )
-  
+  print(f"Query results: {results}")
   client = Cerebras(
     api_key="csk-tj9fe8htptknv3e6p9cw53cxcdte453m93ecpp42566rhwrj",
   )
@@ -32,4 +33,7 @@ def query_collection(query):
   ],
     model="llama-4-scout-17b-16e-instruct",
   )
-  return chat_completion.choices[0].message
+  return {
+          "message":chat_completion.choices[0].message,
+          "sources": results['ids'][0]
+          }
