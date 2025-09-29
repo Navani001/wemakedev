@@ -2,16 +2,27 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import chromadb
 import json
+import os
+import shutil
+
+# Clean up any existing database to avoid schema issues
+db_path = "./chroma_db"
+if os.path.exists(db_path):
+    try:
+        shutil.rmtree(db_path)
+        print(f"Removed existing database at {db_path}")
+    except Exception as e:
+        print(f"Warning: Could not remove existing database: {e}")
+        # Try alternative path with timestamp
+        import time
+        new_path = f"./chroma_db_{int(time.time())}"
+        db_path = new_path
+        print(f"Using alternative database path: {db_path}")
 
 # Initialize Chroma client with persistent storage
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_client = chromadb.PersistentClient(path=db_path)
 
-# Recreate the collection
-try:
-    chroma_client.delete_collection(name="document_collection")
-except:
-    pass
-
+# Create the collection (no need to delete since we start fresh)
 collection = chroma_client.create_collection(name="document_collection")
 
 # Initialize text splitter

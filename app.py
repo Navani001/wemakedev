@@ -9,7 +9,7 @@ import requests
 import uvicorn
 import logging
 import time
-
+from query import query_collection
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -47,13 +47,10 @@ def health_check():
 def pdf(request: PDFRequest):
     """Handle PDF processing requests"""
     try:
-        
         # Return structured response
         return {
             "message": "PDF request processed successfully",
-            "username": request.username,
-            "status": "completed",
-            "file_path": request.file_path
+            "result": query_collection(request.query)
         }
         
     except HTTPException:
