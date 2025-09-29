@@ -1,7 +1,7 @@
 # Initialize Chroma client
 from email import message
 import chromadb
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_client = chromadb.PersistentClient(path="./chroma_db_1759159953")
 import os
 from cerebras.cloud.sdk import Cerebras 
 # Get existing collection (don't create new one!)
@@ -16,11 +16,17 @@ def get_existing_collection():
       print("Please run 'python document.py' first to create and populate the collection!")
       exit()
 def query_collection(query):
+  file="tamilNadu-english.pdf"
   collection = get_existing_collection()
   results = collection.query(
+    
       query_texts=[query],
       n_results=3,  # Return top 3 most relevant chunks
-      include=['documents', 'metadatas', 'distances']
+      
+      include=['documents', 'metadatas', 'distances'],
+      where={
+        "book": file
+      }
   )
   print(f"Query results: {results}")
   client = Cerebras(
@@ -28,8 +34,10 @@ def query_collection(query):
   )
 
   chat_completion = client.chat.completions.create(
+    # context="You are a helpful assistant that helps people find information. and also you follow this rules If the user asks a question that is not related to the context, politely inform them that you are unable to answer the question based on the provided information.`",
     messages=[
-    {"role": "user", "content": query,"context": results['documents'][0]},
+         {"role": "system", "content": "You are a helpful assistant that helps people find information. If the user asks a question that is not related to the context, politely inform them that you are unable to answer the question based on the provided information very very important."},
+    {"role": "user", "content":query,"context": results['documents'][0]},
   ],
     model="llama-4-scout-17b-16e-instruct",
   )

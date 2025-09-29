@@ -34,58 +34,67 @@ text_splitter = RecursiveCharacterTextSplitter(
 )
 
 # Load and process PDF
-loader = PyPDFLoader('./book.pdf')
-pages = []
+python_files = [f for f in os.listdir(".//books")]
+print(python_files)
+
+# loader = PyPDFLoader('./book.pdf')
+# pages = []
 
 print("Loading and splitting PDF documents...")
 
 # Process each page and split into chunks
-all_chunks = []
-chunk_metadata = []
-chunk_ids = []
+for file in python_files:
+    all_chunks = []
+    chunk_metadata = []
+    chunk_ids = []
 
-for page_num, page in enumerate(loader.lazy_load()):
-    pages.append(page)
-    
-    # Split the page content into chunks
-    chunks = text_splitter.split_text(page.page_content)
-    
-    for chunk_num, chunk in enumerate(chunks):
-        # Create unique ID for each chunk
-        chunk_id = f"page_{page_num}_chunk_{chunk_num}"
+    loader = PyPDFLoader(f"./books/{file}")
+    pages = []
+    print(f"Processing page {file}")
+
+    for page_num, page in enumerate(loader.lazy_load()):
+        pages.append(page)
         
-        # Store chunk and metadata
-        all_chunks.append(chunk)
-        chunk_ids.append(chunk_id)
+        # Split the page content into chunks
+        chunks = text_splitter.split_text(page.page_content)
         
-        # Enhanced metadata including original page info
-        metadata = {
-            "page_number": page_num,
-            "chunk_number": chunk_num,
-            "source": page.metadata.get('source', 'unknown'),
-            "total_pages": len(pages) if hasattr(loader, '__len__') else 'unknown'
-        }
-        chunk_metadata.append(metadata)
+        for chunk_num, chunk in enumerate(chunks):
+            # Create unique ID for each chunk
+            chunk_id = f"page_{page_num}_chunk_{chunk_num}"
+            
+            # Store chunk and metadata
+            all_chunks.append(chunk)
+            chunk_ids.append(chunk_id)
+            
+            # Enhanced metadata including original page info
+            metadata = {
+                "page_number": page_num,
+                "chunk_number": chunk_num,
+                "source": page.metadata.get('source', 'unknown'),
+                "book": file,
+                "total_pages": len(pages) if hasattr(loader, '__len__') else 'unknown'
+            }
+            chunk_metadata.append(metadata)
 
-print(f"Created {len(all_chunks)} chunks from {len(pages)} pages")
+    print(f"Created {len(all_chunks)} chunks from {len(pages)} pages")
 
-# Add all chunks to ChromaDB collection
-if all_chunks:
-    collection.add(
-        ids=chunk_ids,
-        documents=all_chunks,
-        metadatas=chunk_metadata
-    )
+    # Add all chunks to ChromaDB collection
+    if all_chunks:
+        collection.add(
+            ids=chunk_ids,
+            documents=all_chunks,
+            metadatas=chunk_metadata
+        )
+        
+        print("Documents successfully embedded in ChromaDB!")
     
-    print("Documents successfully embedded in ChromaDB!")
-   
-    
-    
-else:
-    print("No content found to embed!")
+        
+        
+    else:
+        print("No content found to embed!")
 
-    print(f"\n" + "="*50)
-    print("First page metadata:")
-    print(f"{pages[0].metadata}")
-    print(f"\nFirst page content preview:")
-    print(f"{pages[0].page_content[:300]}{'...' if len(pages[0].page_content) > 300 else ''}")
+        print(f"\n" + "="*50)
+        print("First page metadata:")
+        print(f"{pages[0].metadata}")
+        print(f"\nFirst page content preview:")
+        print(f"{pages[0].page_content[:300]}{'...' if len(pages[0].page_content) > 300 else ''}")
