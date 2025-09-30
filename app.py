@@ -16,10 +16,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
 # Pydantic models for request/response validation
 class PDFRequest(BaseModel):
    query:str
+   book:str
     
 class PDFResponse(BaseModel):
     message: str
@@ -50,7 +50,7 @@ def pdf(request: PDFRequest):
         # Return structured response
         return {
             "message": "PDF request processed successfully",
-            "result": query_collection(request.query)
+            "result": query_collection(request.query,request.book)
         }
         
     except HTTPException:

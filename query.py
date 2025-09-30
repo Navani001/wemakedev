@@ -15,7 +15,7 @@ def get_existing_collection():
       print(f"❌ Collection not found: {e}")
       print("Please run 'python document.py' first to create and populate the collection!")
       exit()
-def query_collection(query):
+def query_collection(query,book):
   file="tamilNadu-english.pdf"
   collection = get_existing_collection()
   results = collection.query(
@@ -25,7 +25,7 @@ def query_collection(query):
       
       include=['documents', 'metadatas', 'distances'],
       where={
-        "book": file
+        "book": f"{book}"
       }
   )
   print(f"Query results: {results}")
