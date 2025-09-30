@@ -1,0 +1,113 @@
+import os
+import subprocess
+import sys
+from pinecone import Pinecone
+from sentence_transformers import SentenceTransformer
+from cerebras.cloud.sdk import Cerebras
+from config import PINECONE_API_KEY, PINECONE_INDEX_NAME, EMBEDDING_MODEL, HF_TOKEN, CEREBRAS_API_KEY
+
+pc = None
+index = None
+embedding_model = None
+
+def initialize_pinecone():
+    global pc, index, embedding_model
+    
+    if pc is None:
+        pc = Pinecone(api_key=PINECONE_API_KEY)
+        index = pc.Index(PINECONE_INDEX_NAME)
+        print(f"🔗 Connected to Pinecone index: {PINECONE_INDEX_NAME}")
+    
+    if embedding_model is None:
+        if HF_TOKEN:
+            os.environ['HF_TOKEN'] = HF_TOKEN
+        embedding_model = SentenceTransformer(EMBEDDING_MODEL)
+
+def get_existing_collection():
+    global pc, index, embedding_model
+    
+    try:
+        initialize_pinecone()
+        stats = index.describe_index_stats()
+        if stats.total_vector_count > 0:
+            print(f"✅ Connected to existing index with {stats.total_vector_count} documents")
+            return True
+        else:
+            return False
+    except Exception as e:
+        print(f"❌ Index not found, running document processing...")
+        try:
+            result = subprocess.run([sys.executable, "document_pinecone.py"], timeout=600)
+            if result.returncode == 0:
+                initialize_pinecone()
+                return True
+        except Exception:
+            pass
+        return False
+
+def get_available_books():
+    global pc, index, embedding_model
+    
+    if not get_existing_collection():
+        return []
+    
+    try:
+        sample_query = embedding_model.encode("book").tolist()
+        results = index.query(vector=sample_query, top_k=1000, include_metadata=True)
+        
+        books = set()
+        for match in results.matches:
+            if 'book' in match.metadata:
+                books.add(match.metadata['book'])
+        return list(books)
+    except Exception:
+        return []
+
+def query_collection(query, book=None, n_results=3):
+    global pc, index, embedding_model
+    
+    if not get_existing_collection():
+        raise Exception("No data available in Pinecone index")
+    
+    query_embedding = embedding_model.encode(query).tolist()
+    
+    query_params = {"vector": query_embedding, "top_k": n_results, "include_metadata": True}
+    if book:
+        query_params["filter"] = {"book": book}
+        print(f"🔍 Searching in book: {book}")
+    
+    results = index.query(**query_params)
+    print(f"📊 Found {len(results.matches)} relevant chunks")
+    
+    contexts = [match.metadata['text'] for match in results.matches if 'text' in match.metadata]
+    context = "\n\n".join(contexts)
+    
+    client = Cerebras(api_key=CEREBRAS_API_KEY)
+    
+    system_prompt = """You are a helpful assistant for educational books. Use the provided context to answer accurately. Always cite which book the information comes from when possible."""
+    
+    user_prompt = f"""Question: {query}
+Context from books: {context}
+Please provide a helpful answer based on the context above."""
+
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        model="llama-4-scout-17b-16e-instruct",
+    )
+    
+    sources_info = [{
+        "id": match.id,
+        "book": match.metadata.get('book', 'unknown'),
+        "page": match.metadata.get('page_number', 'unknown'),
+        "score": match.score
+    } for match in results.matches]
+    
+    return {
+        "message": chat_completion.choices[0].message.content,
+        "sources": sources_info,
+        "available_books": get_available_books(),
+        "query_book_filter": book
+    }

@@ -1,57 +1,18 @@
 import os
-from datetime import timedelta
+from dotenv import load_dotenv
 
-class Config:
-    """Base configuration class."""
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    
-    # Database configuration
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///app.db'
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
-    # JWT configuration
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or SECRET_KEY
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-    JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
-    
-    # Mail configuration
-    MAIL_SERVER = os.environ.get('MAIL_SERVER') or 'localhost'
-    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 587)
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
-    
-    # Pagination
-    POSTS_PER_PAGE = 10
-    
-    # Cache configuration
-    CACHE_TYPE = 'simple'
+# Load environment variables from .env file
+load_dotenv()
 
-class DevelopmentConfig(Config):
-    """Development configuration."""
-    DEBUG = True
-    DEVELOPMENT = True
-    
-class TestingConfig(Config):
-    """Testing configuration."""
-    TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
-    WTF_CSRF_ENABLED = False
+# Hugging Face Configuration
+HF_CACHE_DIR = os.environ.get('HF_CACHE_DIR', './hf_cache')
+HF_TOKEN = os.environ.get('HF_TOKEN')
 
-class ProductionConfig(Config):
-    """Production configuration."""
-    DEBUG = False
-    TESTING = False
-    
-    # Use more secure settings in production
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = 'Lax'
+# Pinecone Configuration
+PINECONE_API_KEY = os.environ.get('PINECONE_API_KEY')
+PINECONE_INDEX_NAME = os.environ.get('PINECONE_INDEX_NAME', 'document-collection')
+PINECONE_DIMENSION = int(os.environ.get('PINECONE_DIMENSION', '384'))
+EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2')
 
-# Configuration dictionary
-config = {
-    'development': DevelopmentConfig,
-    'testing': TestingConfig,
-    'production': ProductionConfig,
-    'default': DevelopmentConfig
-}
+# Cerebras API Configuration
+CEREBRAS_API_KEY = os.environ.get('CEREBRAS_API_KEY')
