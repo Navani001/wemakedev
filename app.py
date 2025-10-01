@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 
-from query_pinecone import query_collection, get_available_books
+from query_pinecone import query_collection, get_available_books, quizz_collection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,10 @@ class PDFRequest(BaseModel):
     book: Optional[str] = None
     message: list[dict] = []
     n_results: Optional[int] = 3
+class QuizzRequest(BaseModel):
+    book: Optional[str] = None
+    n_results: Optional[int] = 3
+    question: Optional[str] = 10
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -48,6 +52,22 @@ async def get_books():
         books = await loop.run_in_executor(None, get_available_books)
         return {"books": books, "count": len(books)}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@app.post('/quizz')
+async def quizz_documents(request: QuizzRequest):
+    try:
+        logger.info(f"Processing quizz: ...")
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            quizz_collection,
+            request.book,
+            request.n_results,
+            request.question
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Quizz error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post('/query')

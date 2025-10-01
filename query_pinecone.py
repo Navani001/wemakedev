@@ -5,7 +5,7 @@ from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 from cerebras.cloud.sdk import Cerebras
 from config import PINECONE_API_KEY, PINECONE_INDEX_NAME, EMBEDDING_MODEL, HF_TOKEN, CEREBRAS_API_KEY
-
+import json
 pc = None
 index = None
 embedding_model = None
@@ -63,7 +63,77 @@ def get_available_books():
     except Exception:
         return []
 
+def quizz_collection(book=None, n_results=3,question=10):
+    
+    global pc, index, embedding_model
+    
+    if not get_existing_collection():
+        raise Exception("No data available in Pinecone index")
+    
+    query_embedding = embedding_model.encode("topics topic").tolist()
+    
+    query_params = {"vector": query_embedding, "top_k": n_results, "include_metadata": True}
+    if book:
+        query_params["filter"] = {"book": book}
+        print(f"🔍 Searching in book: {book}")
+    
+    results = index.query(**query_params)
+    print(f"📊 Found {len(results.matches)} relevant chunks")
+    
+    contexts = [match.metadata['text'] for match in results.matches if 'text' in match.metadata]
+    context = "\n\n".join(contexts)
+    
+    client = Cerebras(api_key=CEREBRAS_API_KEY)
+    question_schema = {
+    "type": "object",
+    "properties": {
+        "questions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string"},
+                    "topic": {"type": "string"},
+                    "answer": {"type": "string"},
+                    "options": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                    }
+                },
+            },
+        },
+    },
+    "additionalProperties": False
+}
+    system_prompt = """You are a helpful assistant for educational books. give me ${question} quizz questions. you generate a quizz question with 4 options and also provide the correct answer. Always cite which book the information comes from when possible and also don't include based on context liked."""
+
+    user_prompt = f"""
+topics from books: {context}
+Please provide a helpful quiz question with 4 options and the correct answer based on the topic above, create {question} questions based on the topic and also don't include any personal opinions or information not contained in the context and also don't include based on context liked"""
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        model="llama-4-scout-17b-16e-instruct",
+        response_format={
+        "type": "json_schema", 
+        "json_schema": {
+            "name": "question_schema",
+            "strict": True,
+            "schema": question_schema
+        }
+    }
+    )
+   
+
+    return {
+        "message": json.loads(chat_completion.choices[0].message.content),
+        "available_books": get_available_books(),
+        "query_book_filter": book
+    }
 def query_collection(query, message=None, book=None, n_results=3):
+    
     global pc, index, embedding_model
     
     if not get_existing_collection():
@@ -98,7 +168,7 @@ Please provide a helpful answer based on the context above and also don't includ
     #     ],
     #     model="llama-4-scout-17b-16e-instruct",
     # )
-    print(message)
+    print("messages to send to backend: "+str(message))
     chat_completion = client.chat.completions.create(
         messages=message,
         model="llama-4-scout-17b-16e-instruct",
