@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class PDFRequest(BaseModel):
     query: str
     book: Optional[str] = None
+    message: list[dict] = []
     n_results: Optional[int] = 3
 
 @asynccontextmanager
@@ -58,6 +59,7 @@ async def query_documents(request: PDFRequest):
             None, 
             query_collection,
             request.query,
+            request.message,
             request.book,
             request.n_results
         )

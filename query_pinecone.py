@@ -63,7 +63,7 @@ def get_available_books():
     except Exception:
         return []
 
-def query_collection(query, book=None, n_results=3):
+def query_collection(query, message=None, book=None, n_results=3):
     global pc, index, embedding_model
     
     if not get_existing_collection():
@@ -83,18 +83,24 @@ def query_collection(query, book=None, n_results=3):
     context = "\n\n".join(contexts)
     
     client = Cerebras(api_key=CEREBRAS_API_KEY)
-    
-    system_prompt = """You are a helpful assistant for educational books. Use the provided context to answer accurately. Always cite which book the information comes from when possible."""
-    
+
+    system_prompt = """You are a helpful assistant for educational books. Use the provided context to answer accurately. Always cite which book the information comes from when possible and also don't include based on context liked."""
+
     user_prompt = f"""Question: {query}
 Context from books: {context}
-Please provide a helpful answer based on the context above."""
-
+Please provide a helpful answer based on the context above and also don't include any personal opinions or information not contained in the context and also don't include based on context liked"""
+    if(message):
+        message=[  {"role": "system", "content": system_prompt}]+message+[{"role": "user", "content": user_prompt}]
+    # chat_completion = client.chat.completions.create(
+    #     messages=[
+    #         {"role": "system", "content": system_prompt},
+    #         {"role": "user", "content": user_prompt}
+    #     ],
+    #     model="llama-4-scout-17b-16e-instruct",
+    # )
+    print(message)
     chat_completion = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ],
+        messages=message,
         model="llama-4-scout-17b-16e-instruct",
     )
     
