@@ -4,6 +4,7 @@ import logging
 import aiohttp
 import asyncio
 import sys
+import os
 from datetime import datetime
 from typing import Annotated, Literal
 from enum import Enum
@@ -37,7 +38,10 @@ logger.setLevel(logging.INFO)
 # Initialize these ONCE at module level to avoid reloading
 try:
     embedding_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
-    pc = Pinecone(api_key="pcsk_7DtsGY_7WW3N5kLpmNdmezDrhnB1aDY8ADcWPdGBmecMKFCobuiR4G2fisim1diAajFfxz")
+    pinecone_api_key = os.getenv("PINECONE_API_KEY")
+    if not pinecone_api_key:
+        raise ValueError("PINECONE_API_KEY environment variable is required")
+    pc = Pinecone(api_key=pinecone_api_key)
     index = pc.Index("document-collection")
 except Exception as e:
     logger.warning(f"Could not initialize Pinecone/SentenceTransformers: {e}")
