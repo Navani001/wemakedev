@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uvicorn
 
-from query_pinecone import query_collection, get_available_books, quizz_collection
+from query import query_collection, get_available_books, quizz_collection
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

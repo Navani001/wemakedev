@@ -37,7 +37,7 @@ def get_existing_collection():
     except Exception as e:
         print(f"❌ Index not found, running document processing...")
         try:
-            result = subprocess.run([sys.executable, "document_pinecone.py"], timeout=600)
+            result = subprocess.run([sys.executable, "document.py"], timeout=600)
             if result.returncode == 0:
                 initialize_pinecone()
                 return True
