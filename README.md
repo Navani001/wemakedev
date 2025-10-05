@@ -204,175 +204,121 @@ curl -X POST http://localhost:7860/query \
 |----------|-------------|---------|
 | `PORT` | Server port | `7860` |
 | `PINECONE_DIMENSION` | Vector dimension | `384` |
-| `EMBEDDING_MODEL` | Sentence transformer model | `all-MiniLM-L6-v2` |
-| `HF_CACHE_DIR` | Hugging Face cache directory | `./hf_cache` |
 
-## 🏗️ System Architecture
+# WeMakeDev — RAG + Voice Agent (current status)
 
-### Core Components
+This repository contains a Retrieval-Augmented Generation (RAG) system plus an experimental voice/agent integration. The project combines document processing, vector search (Pinecone), embeddings (SentenceTransformers / Hugging Face), and LLM-driven responses via Cerebras Cloud. A FastAPI service exposes query and quiz endpoints. There's also a LiveKit-based voice agent implementation that uses Deepgram for STT/TTS and OpenAI/Cerebras models for conversational responses.
 
-1. **FastAPI Application** (`app.py`)
-   - RESTful API server
-   - Async request handling
-   - Health monitoring
+This README has been updated to reflect the actual code and tooling in the repository as of now.
 
-2. **Document Processing** (`document_pinecone.py`)
-   - PDF text extraction
-   - Text chunking and preprocessing
-   - Vector embedding generation
-   - Pinecone index management
+## What this project currently includes
 
-3. **Query Engine** (`query_pinecone.py`)
-   - Vector similarity search
-   - Context retrieval
-   - AI-powered response generation
-   - Quiz generation logic
+- FastAPI application exposing endpoints in `app.py` (/, /health, /books, /query, /quizz)
+- Document processing and embedding upload: `document_pinecone.py` (downloads PDFs from a HF repo fallback and uploads embeddings to Pinecone)
+- Query & quiz logic: `query_pinecone.py` (queries Pinecone and calls Cerebras chat completions)
+- Voice/agent code: `agent.py` (LiveKit agent + tools, Deepgram STT/TTS, utility functions)
+- Configuration: `config.py` (loads environment variables)
+- Example books folder: `books/` (small set of sample PDFs or placeholders)
+- Dockerfile for container builds
 
-4. **Books Directory** (`books/`)
-   - Contains all PDF documents
-   - Automatically scanned for new files
-   - Currently includes:
-     - `tamilNadu-computerScience.pdf`
-     - `tamilNadu-english.pdf`
+## Main libraries & services used
 
-### Data Flow
+- FastAPI (API server)
+- Uvicorn (ASGI server)
+- Pinecone (vector database)
+- sentence-transformers (embeddings, e.g. all-MiniLM-L6-v2)
+- langchain_community (PDF loader used in processing script)
+- huggingface_hub (optional download of PDFs)
+- Cerebras Cloud SDK (LLM/chat completions)
+- LiveKit, Deepgram, and related plugins (voice agent)
+- python-dotenv (load .env values)
 
-```
-PDF Books → Document Processing → Vector Embeddings → Pinecone Database
-                                                            ↓
-User Query → Vector Search → Context Retrieval → AI Response → JSON Output
-```
+Check `requirements_rag.txt` for the full pinned dependencies list.
 
-## 🐳 Docker Deployment
+## Quick run (local development)
 
-The application includes a `DockerFile` for containerized deployment:
+1) Create and activate a virtual environment (PowerShell on Windows):
 
-```bash
-# Build the Docker image
-docker build -t wemakedev-rag .
-
-# Run the container
-docker run -p 7860:7860 --env-file .env wemakedev-rag
+```powershell
+python -m venv .venv; .venv\Scripts\Activate.ps1
 ```
 
-## 🔧 Development
+2) Install dependencies:
 
-### Adding New Books
-
-1. Place PDF files in the `books/` directory
-2. Run the document processing script:
-   ```bash
-   python document_pinecone.py
-   ```
-3. The system will automatically process and index new documents
-
-### Project Structure Details
-
-```
-📁 rag/
-├── 🚀 app.py                    # FastAPI application server
-├── 📄 document_pinecone.py      # PDF processing & vectorization
-├── 🔍 query_pinecone.py         # Search & AI response logic
-├── ⚙️  config.py                # Configuration management
-├── 📋 requirements_rag.txt      # Python dependencies
-├── 🔐 .env.example             # Environment template
-├── 🔐 .env                     # Your secrets (not in git)
-├── 📚 books/                   # PDF documents storage
-│   ├── 📖 tamilNadu-computerScience.pdf
-│   └── 📖 tamilNadu-english.pdf
-├── 🐳 DockerFile              # Container configuration
-├── 🚫 .gitignore              # Git ignore rules
-└── 📖 README.md               # This documentation
+```powershell
+pip install -r requirements_rag.txt
 ```
 
-### Key Features Implementation
+3) Create a `.env` file (you can copy values from `.env.example` if present) and set at least:
 
-- **Vector Similarity Search**: Uses Pinecone for fast document retrieval
-- **Contextual AI Responses**: Integrates Cerebras for intelligent answers
-- **Multi-document Support**: Query across all books or target specific ones
-- **Async Processing**: Non-blocking API responses
-- **Scalable Architecture**: Ready for production deployment
+- PINECONE_API_KEY — Pinecone API key
+- PINECONE_INDEX_NAME — name for index (default: document-collection)
+- HF_TOKEN — (optional) Hugging Face token if downloading PDFs from a repo
+- CEREBRAS_API_KEY — API key for Cerebras chat completions
+- PORT — port to run the FastAPI app (default 7860)
 
-## 🛠️ Troubleshooting
+Example minimal `.env`:
 
-### Common Issues
-
-1. **API Key Errors**
-   ```
-   Error: Invalid API key
-   ```
-   - Check your `.env` file has correct API keys
-   - Ensure no extra spaces in environment variables
-   - Verify API keys are active and have proper permissions
-
-2. **Pinecone Connection Issues**
-   ```
-   Error: Unable to connect to Pinecone
-   ```
-   - Verify your Pinecone API key and index name
-   - Check if your Pinecone index exists and is active
-   - Ensure the dimension matches your embedding model (384 for all-MiniLM-L6-v2)
-
-3. **Document Processing Errors**
-   ```
-   Error: Unable to process PDF
-   ```
-   - Check if PDF files are not corrupted
-   - Ensure PDFs are text-based (not scanned images)
-   - Verify sufficient disk space for processing
-
-4. **Port Already in Use**
-   ```
-   Error: Port 7860 is already in use
-   ```
-   - Change PORT in your `.env` file
-   - Or kill the existing process: `netstat -ano | findstr :7860`
-
-### Environment Variables Checklist
-
-Make sure your `.env` file contains all required variables:
-
-```bash
-✅ PINECONE_API_KEY=your-key-here
-✅ PINECONE_INDEX_NAME=document-collection  
-✅ CEREBRAS_API_KEY=your-key-here
-✅ HF_TOKEN=your-token-here
-✅ PORT=7860
+```text
+PINECONE_API_KEY=pc-xxxx
+PINECONE_INDEX_NAME=document-collection
+CEREBRAS_API_KEY=csk-xxxx
+HF_TOKEN=hf_xxx
+PORT=7860
 ```
 
-## 📚 Books Directory
+4) Prepare or add PDFs:
 
-The `books/` folder contains all PDF documents that can be queried:
+- Put PDFs into `books/` or ensure `document_pinecone.py` can download them from the configured Hugging Face repo.
 
+5) Build index (creates embeddings and uploads to Pinecone):
+
+```powershell
+python document_pinecone.py
 ```
-books/
-├── 📖 tamilNadu-computerScience.pdf    # Tamil Nadu Computer Science curriculum
-├── 📖 tamilNadu-english.pdf           # Tamil Nadu English curriculum
-└── 📖 [Add your PDFs here]            # Place new books for processing
+
+6) Start the API server:
+
+```powershell
+python app.py
 ```
 
-**Note**: After adding new PDFs, run `python document_pinecone.py` to process and index them.
+API base: http://localhost:7860
 
-## 🤝 Contributing
+Endpoints:
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+- GET / — welcome
+- GET /health — status
+- GET /books — list available indexed books
+- POST /query — body: {"query": "...", "book": "optional.pdf", "n_results": 3, "message": [...]} — returns an LLM answer plus sources
+- POST /quizz — body: {"book": "optional.pdf", "n_results": 3, "question": 10} — returns generated quiz JSON
 
-## 📄 License
+## Voice agent (notes)
 
-This project is open source and available under the [MIT License](LICENSE).
+- `agent.py` contains an experimental LiveKit-based voice agent that:
+   - uses `sentence-transformers` to embed user queries and Pinecone to search the knowledge base
+   - provides helper function tools (get_weather, get_time)
+   - configures a session with Deepgram STT/TTS and a Cerebras/OpenAI LLM
+- This component is not required to run the REST API but demonstrates how to wire a conversation-capable agent to the same knowledge base.
 
-## 🆘 Getting Help
+## Known limitations & TODOs
 
-- 📖 **FastAPI Docs**: https://fastapi.tiangolo.com/
-- 🔍 **Pinecone Docs**: https://docs.pinecone.io/
-- 🤖 **Cerebras Docs**: https://cerebras.ai/
-- 🤗 **Hugging Face**: https://huggingface.co/docs
-- 🐛 **Issues**: Create an issue in this repository for bugs or feature requests
+- Some components assume external services (Pinecone, Cerebras, Deepgram). Without valid API keys they will not function.
+- `document_pinecone.py` may attempt to download PDFs from a Hugging Face repo — ensure `HF_TOKEN` is set if the repo is private.
+- Error handling is basic in places (scripts often print and exit); consider adding better retries and logging.
+
+If you want, I can:
+
+- run a small verification (read environment and list available books) locally in this workspace
+- add a `.env.example` file with recommended variables
+- add a small smoke test script that calls `/health` and `/books`
 
 ---
 
-Built with ❤️ by **WeMakeDev** team for intelligent document interaction!
+Requirements coverage:
+
+- README updated to describe current project files and status — Done
+- Listed main libraries and external services used — Done
+- Quick local run steps and endpoints — Done
+
+If you'd like a more detailed README (examples for request/response JSON, contribution guide, or Docker instructions), tell me which sections to expand and I'll update the file.
